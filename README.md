@@ -1,0 +1,1 @@
+An attempt to encapsulate Server<->Client State Machine
