@@ -77,6 +77,11 @@ namespace ServerClientStateMachine
 
         }
 
+        public bool TrySetState(TEnum newState)
+        {
+            return TrySetState(newState, out StateTransitionFailReason reason);
+        }
+
         public bool TrySetState(TEnum newState, out StateTransitionFailReason failReason)
         {
             var rule = m_Rules.Find(x => x.From.Equals(State) && x.To.Equals(newState));
@@ -110,18 +115,6 @@ namespace ServerClientStateMachine
 
             failReason = StateTransitionFailReason.Success;        
             return true;
-        }
-
-        public static void Sync(StateMachine<TEnum> server, StateMachine<TEnum> client)
-        {
-            if(!server.IsServer)
-                throw new StateMachineException("Server state machine not server");
-            
-            if(!client.IsClient)
-                throw new StateMachineException("Client state machine not server");
-
-            server.ReportRemoteState(client.State);
-            client.ReportRemoteState(server.State);
         }
     }
 }
