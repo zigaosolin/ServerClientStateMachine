@@ -81,7 +81,7 @@ namespace ServerClientStateMachine.Tests
 
             server.ReportRemoteState(client.State);
             client.ReportRemoteState(server.State);
-           
+
             Assert.False(server.TrySetState(States.EndResult, out reason));
             Assert.Equal(StateTransitionFailReason.NoRule, reason);
 
@@ -125,6 +125,88 @@ namespace ServerClientStateMachine.Tests
             client.ReportRemoteState(server.State);
 
             Assert.True(client.TrySetState(States.EndResult));
+
+            server.ReportRemoteState(client.State);
+            client.ReportRemoteState(server.State);
+
+            Assert.Equal(States.EndResult, server.State);
         }
+
+        [Fact]
+        public void SimpleTransition_AllowMismatchStates()
+        {
+            var builder = new StateMachineBuilder<States>()
+                .ClientPermit(States.Idle, States.Running)
+                .ClientPermit(States.Running, States.EndResult, TransitionMatching.ClientAndServerCanMismatch);
+
+            var client = builder.BuildClient();
+            var server = builder.BuildServer();
+
+            server.ReportRemoteState(client.State);
+            client.ReportRemoteState(server.State);
+
+            client.SetState(States.Running);
+
+            // Can set the state here as there is rule for mismatch
+            Assert.True(client.TrySetState(States.EndResult));
+
+            server.ReportRemoteState(client.State);
+            client.ReportRemoteState(server.State);
+
+            // There are no direct transitions, so server won't match
+            Assert.Equal(States.Idle, server.State);
+        }
+
+        [Fact]
+        public void SimpleTransition_AllowMismatchStates_WithDirectTransition()
+        {
+            var builder = new StateMachineBuilder<States>()
+                .ClientPermit(States.Idle, States.Running)
+                .ClientPermit(States.Running, States.EndResult, TransitionMatching.ClientAndServerCanMismatch)
+                .ClientPermit(States.Idle, States.EndResult);
+
+            var client = builder.BuildClient();
+            var server = builder.BuildServer();
+
+            server.ReportRemoteState(client.State);
+            client.ReportRemoteState(server.State);
+
+            client.SetState(States.Running);
+
+            // Can set the state here as there is rule for mismatch
+            Assert.True(client.TrySetState(States.EndResult));
+
+            server.ReportRemoteState(client.State);
+            client.ReportRemoteState(server.State);
+
+            // Direct transition available (server never gets Running State)
+            Assert.Equal(States.EndResult, server.State);
+        }
+
+        [Fact]
+        public void SimpleTransition_MustMismatchStates()
+        {
+            var builder = new StateMachineBuilder<States>()
+                .ClientPermit(States.Idle, States.Running)
+                .ClientPermit(States.Running, States.EndResult, TransitionMatching.ClientAndServerMismatch)
+                .ClientPermit(States.Idle, States.EndResult);
+
+            var client = builder.BuildClient();
+            var server = builder.BuildServer();
+
+            server.ReportRemoteState(client.State);
+            client.ReportRemoteState(server.State);
+
+            client.SetState(States.Running);
+
+            Assert.True(client.TrySetState(States.EndResult));
+
+            server.ReportRemoteState(client.State);
+            client.ReportRemoteState(server.State);
+
+            Assert.Equal(States.EndResult, server.State);
+        }
+
+        
     }
 }
